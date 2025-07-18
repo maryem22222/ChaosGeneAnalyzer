@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spectromètre à Chaos - ADN</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d0d0d;
+      color: #f1f1f1;
+      text-align: center;
+      padding: 2rem;
+    }
+    input, button, textarea {
+      margin: 1rem;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+    }
+    textarea {
+      width: 80%;
+      height: 100px;
+    }
+    #output {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      background: #1a1a1a;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ff99;
+    }
+  </style>
+</head>
+<body>
+  <h1>Spectromètre à Chaos - Analyse d'ADN</h1>
+  <p>Entrez une séquence d'ADN (lettres A, T, C, G) :</p>
+  <textarea id="inputSequence" placeholder="Ex: ATCGATTAGC..."></textarea>
+  <br />
+  <button onclick="analyzeSequence()">Analyser</button>
+  <div id="output"></div>
+
+  <script>
+    function nucleotideEntropy(seq) {
+      let count = { 'A': 0, 'T': 0, 'C': 0, 'G': 0 };
+      for (let char of seq) {
+        if (count.hasOwnProperty(char)) count[char]++;
+      }
+      const total = Object.values(count).reduce((a, b) => a + b, 0);
+      const log2 = x => (x > 0 ? Math.log2(x) : 0);
+      return -Object.values(count).map(c => c / total).reduce((acc, p) => acc + (p > 0 ? p * log2(p) : 0), 0) / 2;
+    }
+
+    function compressionRatio(seq) {
+      try {
+        const compressed = new TextEncoder().encode(seq);
+        const compressedLength = compressed.length;
+        return compressedLength / seq.length;
+      } catch {
+        return 1;
+      }
+    }
+
+    function motifRepetition(seq) {
+      let motif = seq.slice(0, 4);
+      let count = 0;
+      for (let i = 4; i < seq.length; i += 4) {
+        if (seq.slice(i, i + 4) === motif) count++;
+      }
+      return count / (seq.length / 4);
+    }
+
+    function analyzeSequence() {
+      const seq = document.getElementById("inputSequence").value.trim().toUpperCase().replace(/[^ATCG]/g, "");
+      if (seq.length < 20) {
+        document.getElementById("output").innerText = "Veuillez entrer au moins 20 lettres valides (A, T, C, G).";
+        return;
+      }
+
+      const H = nucleotideEntropy(seq); // 0 à 2 (max 2 bits pour 4 symboles)
+      const C = compressionRatio(seq); // Ratio < 1
+      const M = motifRepetition(seq);  // 0 à 1
+
+      // Normalisation
+      const Hn = H / 2;
+      const Cn = Math.min(1, C);
+      const Mn = 1 - M;
+
+      const predictability = 1 - Math.min(Hn, Cn, Mn);
+
+      const msg = `
+        Entropie (base 4) : ${Hn.toFixed(3)}\n
+        Ratio de compression estimé : ${Cn.toFixed(3)}\n
+        Répétition de motifs détectée : ${(1 - Mn).toFixed(3)}\n
+        🧬 Prédictibilité de la séquence : ${(predictability * 100).toFixed(1)} %
+      `;
+
+      document.getElementById("output").innerText = msg;
+    }
+  </script>
+</body>
+</html>
